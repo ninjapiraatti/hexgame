@@ -122,16 +122,20 @@ body {
 
 .app {
   display: grid;
-  grid-template-columns: 1fr 160px;
+  grid-template-columns: 1fr 150px;
   grid-template-rows: auto 1fr auto;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  max-width: 100%;
-  min-height: 100vh;
+  grid-template-areas:
+    "header header"
+    "board sidebar"
+    "footer sidebar";
+  gap: 0.5rem;
+  padding: 0.5rem;
+  height: 100vh;
+  overflow: hidden;
 }
 
 header {
-  grid-column: 1 / -1;
+  grid-area: header;
   text-align: center;
 }
 
@@ -169,18 +173,16 @@ header h1 {
 }
 
 main {
-  display: flex;
-  justify-content: stretch;
-  align-items: stretch;
+  grid-area: board;
   min-height: 0;
+  min-width: 0;
 }
 
 footer {
-  grid-column: 1;
+  grid-area: footer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0;
 }
 
 .controls {
@@ -222,11 +224,11 @@ footer {
 }
 
 .sidebar {
-  grid-row: 3;
+  grid-area: sidebar;
   background: #252540;
   border-radius: 6px;
   padding: 0.5rem;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   overflow-y: auto;
 }
 

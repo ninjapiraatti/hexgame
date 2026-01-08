@@ -19,11 +19,18 @@ export function useGame() {
 
   const currentPlayer = computed(() => getCurrentPlayer(state.value))
   const isPlayerTurn = computed(() => !currentPlayer.value.isAI)
-  const explorableHexes = computed(() =>
-    getExplorableHexes(currentPlayer.value.id, state.value)
-  )
+
+  // Only show explorable hexes for human player during their turn
+  const humanPlayer = computed(() => state.value.players.find(p => !p.isAI))
+  const explorableHexes = computed(() => {
+    if (!isPlayerTurn.value || !humanPlayer.value) return []
+    return getExplorableHexes(humanPlayer.value.id, state.value)
+  })
+
   const canPlaceTile = computed(() =>
-    state.value.turnPhase === 'placeTile' && explorableHexes.value.length > 0
+    isPlayerTurn.value &&
+    state.value.turnPhase === 'placeTile' &&
+    explorableHexes.value.length > 0
   )
 
   const selectedUnitMoves = computed(() => {
@@ -78,9 +85,9 @@ export function useGame() {
     }
 
     // If clicking a tile with our unit, select it
-    if (existingTile && state.value.turnPhase === 'actions') {
+    if (existingTile && state.value.turnPhase === 'actions' && humanPlayer.value) {
       const unitOnTile = state.value.units.find(
-        u => u.owner === currentPlayer.value.id &&
+        u => u.owner === humanPlayer.value!.id &&
           u.position.q === coord.q &&
           u.position.r === coord.r
       )
