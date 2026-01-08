@@ -33,11 +33,17 @@ export interface CombatRules {
   siegeTurnsToCapture: number
 }
 
+export interface AIRules {
+  // Minimum number of soldiers before moving toward enemy cities
+  minSoldiersForAttack: number
+}
+
 export interface GameRules {
   city: CityRules
   economy: EconomyRules
   purchase: PurchaseRules
   combat: CombatRules
+  ai: AIRules
 }
 
 // Default rules
@@ -59,6 +65,9 @@ export const DEFAULT_RULES: GameRules = {
   },
   combat: {
     siegeTurnsToCapture: 5
+  },
+  ai: {
+    minSoldiersForAttack: 2
   }
 }
 
@@ -80,6 +89,10 @@ export function setRules(rules: Partial<GameRules>): void {
     economy: {
       ...activeRules.economy,
       ...rules.economy
+    },
+    ai: {
+      ...activeRules.ai,
+      ...rules.ai
     }
   }
 }
