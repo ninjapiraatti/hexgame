@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import type { GameState, Player, Tile, TerrainType } from '../types'
+import type { GameState, Player, Tile, Unit, TerrainType, HexCoord } from '../types'
 import { coordToKey } from '../utils/hex'
 
 // Create initial player
@@ -23,14 +23,31 @@ export function createTile(q: number, r: number, type: TerrainType): Tile {
   }
 }
 
-// Get random terrain type
-export function getRandomTerrain(): TerrainType {
-  const terrains: TerrainType[] = ['forest', 'desert', 'mountain', 'water']
-  return terrains[Math.floor(Math.random() * terrains.length)]
+// Create a unit
+export function createUnit(type: Unit['type'], owner: string, position: HexCoord): Unit {
+  return {
+    id: crypto.randomUUID(),
+    type,
+    owner,
+    position: { ...position },
+    hasMoved: false
+  }
 }
 
-// Create initial game state
-export function createGameState(playerNames: string[], aiCount: number = 0): GameState {
+// Get random terrain type (land-weighted, water less common)
+export function getRandomTerrain(): TerrainType {
+  const roll = Math.random()
+  if (roll < 0.3) return 'forest'
+  if (roll < 0.55) return 'desert'
+  if (roll < 0.8) return 'mountain'
+  return 'water'
+}
+
+// Create initial game state - defaults to 1 human + 3 AI
+export function createGameState(
+  playerNames: string[] = ['Player'],
+  aiCount: number = 3
+): GameState {
   const players: Player[] = [
     ...playerNames.map((name, i) => createPlayer(`p${i}`, name, false)),
     ...Array.from({ length: aiCount }, (_, i) =>
@@ -43,13 +60,18 @@ export function createGameState(playerNames: string[], aiCount: number = 0): Gam
   const tiles = new Map<string, Tile>()
   tiles.set(coordToKey(startTile.coord), startTile)
 
+  // Create a settler for each player at the starting tile
+  const units: Unit[] = players.map(player =>
+    createUnit('settler', player.id, { q: 0, r: 0 })
+  )
+
   return reactive({
-    phase: 'setup',
+    phase: 'playing',
     turnPhase: 'placeTile',
     currentPlayerIndex: 0,
     players,
     tiles,
-    units: [],
+    units,
     cities: [],
     turnNumber: 1
   }) as GameState

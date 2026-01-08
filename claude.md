@@ -6,52 +6,61 @@ A turn-based hex tile strategy game inspired by Civilization, played on a dynami
 
 ## Tech Stack
 
-- **Vue 3** with Composition API
+- **Vue 3** with Composition API. Use `<script setup lang="ts">` and place template before script.
 - **TypeScript** for type safety
 - **No external graphics** - use CSS shapes, Unicode symbols, and emojis for all visuals
 
 ## Game Rules
 
 ### Setup
+
 - Game starts with a single hex tile at the center
 - All players begin on this starting tile with one **Settler** unit
 
 ### Turn Structure
+
 1. **Tile Placement** (optional): If any of the player's units are adjacent to an unexplored hex, the player may draw a random tile and place it there
 2. **Unit Actions**: Move units, found cities, engage in combat
 
 ### Tiles / Terrain Types
-| Terrain  | Symbol | Resource    |
-|----------|--------|-------------|
-| Forest   | 🌲     | Wood        |
-| Desert   | 🏜️     | ???         |
-| Mountain | ⛰️     | Stone       |
-| Water    | 🌊     | Fish        |
 
-*Tile distribution ratios TBD. More terrain types may be added.*
+| Terrain  | Symbol | Resource |
+| -------- | ------ | -------- |
+| Forest   | 🌲     | Wood     |
+| Desert   | 🏜️     | Manna    |
+| Mountain | ⛰️     | Metal    |
+| Water    | 🌊     | Fish     |
+
+_Tile distribution ratios TBD. More terrain types may be added._
 
 ### Units
+
 - **Settler**: Can found a city (consumed in the process)
-- *More unit types to be added*
+- _More unit types to be added_
 
 Each player can have **one city maximum** (for now).
 
 ### Resources
+
 - **Gold**: Universal currency
 - **Biome resources**: Each terrain type produces its own resource
 
-*Economy details TBD.*
+_Economy details TBD._
 
 ### Combat
+
 Simple dice-based resolution:
+
 1. Each unit in combat rolls one six-sided die
 2. Compare totals (if multiple units involved)
 3. Lower total loses (tie resolution TBD)
 
 ### Win Condition
+
 **Score-based** - highest score wins. Scoring criteria TBD (territory, resources, cities, etc.)
 
 ### Game Modes
+
 - Local hot-seat (multiple players, same device)
 - vs AI
 
@@ -60,24 +69,29 @@ No online multiplayer.
 ## Architecture Guidelines
 
 ### Extensibility First
+
 The game will grow in complexity. Design with these future additions in mind:
+
 - Multiple tile types with different properties
 - Various unit types with unique abilities
 - Tokens and markers
 - Possibly cards
+- More complex economy and resource management
 
 ### Recommended Patterns
+
 - **Factory pattern** for creating tiles, units, tokens
 - **Component-based units** if abilities become complex
 - **State machine** for game phases and turn management
 - **Clear separation** between game logic and Vue rendering
 
 ### Data Structures
+
 ```typescript
 // Examples - refine during implementation
 
 interface HexCoord {
-  q: number;  // axial coordinates
+  q: number; // axial coordinates
   r: number;
 }
 
@@ -104,6 +118,7 @@ interface Player {
 ```
 
 ### File Structure (suggested)
+
 ```
 src/
   components/       # Vue components
@@ -119,6 +134,7 @@ src/
 ```
 
 ## Visual Style
+
 - Hex tiles rendered with CSS (borders, backgrounds)
 - Emojis for terrain indicators
 - Simple geometric shapes for units (circles, squares)
@@ -126,6 +142,7 @@ src/
 - Color coding for player ownership
 
 ## Development Notes
+
 - Keep it lightweight - this is a prototype
 - Prioritize playability over polish
 - Document design decisions as the game evolves
