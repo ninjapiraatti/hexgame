@@ -1,6 +1,7 @@
 import type { GameState, Unit, City, HexCoord, Tile } from '../types'
-import { coordToKey, getNeighbors, coordsEqual } from '../utils/hex'
+import { coordToKey, getNeighbors, coordsEqual, hexDistance } from '../utils/hex'
 import { createTile, getRandomTerrain } from '../state/gameState'
+import { getRules } from '../rules/gameRules'
 
 // Check if a terrain type is land (not water)
 export function isLand(type: Tile['type']): boolean {
@@ -20,21 +21,45 @@ export function countLandNeighbors(coord: HexCoord, tiles: Map<string, Tile>): n
   return count
 }
 
+// Check if a hex already has a city
+export function hasCityAt(coord: HexCoord, state: GameState): boolean {
+  return state.cities.some(c => c.position.q === coord.q && c.position.r === coord.r)
+}
+
+// Get distance to nearest city (returns Infinity if no cities exist)
+export function distanceToNearestCity(coord: HexCoord, state: GameState): number {
+  if (state.cities.length === 0) return Infinity
+  return Math.min(...state.cities.map(c => hexDistance(coord, c.position)))
+}
+
 // Check if a settler can found a city at their current position
 export function canFoundCity(unit: Unit, state: GameState): boolean {
+  const rules = getRules().city
+
   if (unit.type !== 'settler') return false
 
-  // Check if player already has a city
-  const hasCity = state.cities.some(c => c.owner === unit.owner)
-  if (hasCity) return false
+  // Check if player has reached max cities
+  if (rules.maxCitiesPerPlayer > 0) {
+    const playerCityCount = state.cities.filter(c => c.owner === unit.owner).length
+    if (playerCityCount >= rules.maxCitiesPerPlayer) return false
+  }
 
   // Check if standing on land
   const tile = state.tiles.get(coordToKey(unit.position))
   if (!tile || !isLand(tile.type)) return false
 
-  // Check if there are at least 3 land neighbors
+  // Check if there's already a city here
+  if (hasCityAt(unit.position, state)) return false
+
+  // Check minimum distance from other cities
+  if (rules.minDistanceFromCity > 0) {
+    const nearest = distanceToNearestCity(unit.position, state)
+    if (nearest < rules.minDistanceFromCity) return false
+  }
+
+  // Check if there are enough land neighbors
   const landNeighbors = countLandNeighbors(unit.position, state.tiles)
-  return landNeighbors >= 3
+  return landNeighbors >= rules.minLandNeighbors
 }
 
 // Found a city with a settler (consumes the settler)
