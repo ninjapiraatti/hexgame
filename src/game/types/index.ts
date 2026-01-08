@@ -11,7 +11,7 @@ export type TerrainType = 'forest' | 'desert' | 'mountain' | 'water'
 export type ResourceType = 'gold' | 'wood' | 'stone' | 'fish'
 
 // Unit types
-export type UnitType = 'settler'
+export type UnitType = 'settler' | 'soldier'
 
 // Player identification
 export type PlayerId = string
@@ -32,12 +32,19 @@ export interface Unit {
   hasMoved: boolean
 }
 
+// Siege tracking - which player is sieging and for how many turns
+export interface SiegeStatus {
+  attacker: PlayerId
+  turns: number
+}
+
 // City definition
 export interface City {
   id: string
   owner: PlayerId
   position: HexCoord
   name: string
+  siege?: SiegeStatus
 }
 
 // Player state
@@ -48,6 +55,7 @@ export interface Player {
   resources: Record<ResourceType, number>
   score: number
   isAI: boolean
+  isDefeated: boolean
 }
 
 // Game phase
@@ -66,4 +74,5 @@ export interface GameState {
   units: Unit[]
   cities: City[]
   turnNumber: number
+  winner?: PlayerId
 }

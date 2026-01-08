@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import GameBoard from "./components/board/GameBoard.vue";
 import GameSetup from "./components/ui/GameSetup.vue";
+import PurchasePanel from "./components/ui/PurchasePanel.vue";
 import { useGame } from "./composables/useGame";
 import type { PlayerSetup } from "./game/state/gameState";
 
@@ -15,10 +16,13 @@ const {
   canPlaceTile,
   selectedUnitMoves,
   canSelectedUnitFoundCity,
+  validSpawnLocations,
+  canPurchaseUnits,
   handleHexClick,
   handleFoundCity,
   handleEndTurn,
   handleSkipPlacement,
+  handlePurchaseUnit,
   startGame,
   newGame,
 } = useGame();
@@ -64,10 +68,7 @@ const playerColorMap = computed(() => {
       <div class="turn-info" v-if="currentPlayer">
         <span>Turn {{ state.turnNumber }}</span>
         <span class="divider">|</span>
-        <span
-          class="current-player"
-          :style="{ color: getPlayerColor(state.currentPlayerIndex) }"
-        >
+        <span class="current-player" :style="{ color: getPlayerColor(state.currentPlayerIndex) }">
           {{ currentPlayer.name }}
         </span>
         <span v-if="currentPlayer.isAI" class="ai-badge">AI</span>
@@ -85,27 +86,16 @@ const playerColorMap = computed(() => {
         :valid-moves="selectedUnitMoves"
         :can-place-tile="canPlaceTile && isPlayerTurn"
         :player-color-map="playerColorMap"
-        @hex-click="handleHexClick"
-      />
+        @hex-click="handleHexClick" />
     </main>
 
     <footer>
       <div class="controls" v-if="isPlayerTurn && !isProcessing">
-        <button
-          v-if="state.turnPhase === 'placeTile'"
-          @click="handleSkipPlacement"
-          class="btn"
-        >
+        <button v-if="state.turnPhase === 'placeTile'" @click="handleSkipPlacement" class="btn">
           Skip Tile Placement
         </button>
 
-        <button
-          v-if="canSelectedUnitFoundCity"
-          @click="handleFoundCity"
-          class="btn btn-primary"
-        >
-          Found City
-        </button>
+        <button v-if="canSelectedUnitFoundCity" @click="handleFoundCity" class="btn btn-primary">Found City</button>
 
         <button @click="handleEndTurn" class="btn">End Turn</button>
       </div>
@@ -123,12 +113,8 @@ const playerColorMap = computed(() => {
         <li
           v-for="(player, index) in state.players"
           :key="player.id"
-          :class="{ active: index === state.currentPlayerIndex }"
-        >
-          <span
-            class="player-color"
-            :style="{ backgroundColor: getPlayerColor(index) }"
-          ></span>
+          :class="{ active: index === state.currentPlayerIndex }">
+          <span class="player-color" :style="{ backgroundColor: getPlayerColor(index) }"></span>
           <div class="player-info">
             <span class="player-name">
               {{ player.name }}
@@ -145,11 +131,8 @@ const playerColorMap = computed(() => {
           <span
             class="player-color"
             :style="{
-              backgroundColor: getPlayerColor(
-                state.players.findIndex((p) => p.id === city.owner)
-              ),
-            }"
-          ></span>
+              backgroundColor: getPlayerColor(state.players.findIndex((p) => p.id === city.owner)),
+            }"></span>
           {{ city.name }}
         </li>
       </ul>
@@ -159,10 +142,15 @@ const playerColorMap = computed(() => {
         <h3>Selected Unit</h3>
         <p>Type: {{ selectedUnit.type }}</p>
         <p>Moved: {{ selectedUnit.hasMoved ? "Yes" : "No" }}</p>
-        <p v-if="canSelectedUnitFoundCity" class="can-found">
-          Can found city here!
-        </p>
+        <p v-if="canSelectedUnitFoundCity" class="can-found">Can found city here!</p>
       </div>
+
+      <PurchasePanel
+        v-if="currentPlayer && !currentPlayer.isAI"
+        :player-gold="currentPlayer.gold"
+        :valid-spawn-locations="validSpawnLocations"
+        :can-purchase="canPurchaseUnits"
+        @purchase="handlePurchaseUnit" />
     </aside>
   </div>
 </template>

@@ -17,7 +17,8 @@ function createPlayer(id: string, name: string, isAI: boolean = false): Player {
     gold: 0,
     resources: { gold: 0, wood: 0, stone: 0, fish: 0 },
     score: 0,
-    isAI
+    isAI,
+    isDefeated: false
   }
 }
 

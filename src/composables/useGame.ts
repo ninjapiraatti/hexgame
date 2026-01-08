@@ -1,5 +1,5 @@
 import { ref, computed, watch, nextTick } from 'vue'
-import type { GameState, HexCoord, Unit } from '@/game/types'
+import type { GameState, HexCoord, Unit, UnitType } from '@/game/types'
 import { createGameState, type PlayerSetup } from '@/game/state/gameState'
 import { getCurrentPlayer, endTurn, onTilePlaced, skipTilePlacement } from '@/game/systems/turnManager'
 import {
@@ -11,6 +11,7 @@ import {
   foundCity
 } from '@/game/systems/actions'
 import { checkAndRunAI } from '@/game/systems/ai'
+import { purchaseUnit, getValidSpawnLocations } from '@/game/systems/purchase'
 
 // Create a minimal state for the setup phase
 function createSetupState(): GameState {
@@ -58,6 +59,17 @@ export function useGame() {
   const canSelectedUnitFoundCity = computed(() => {
     if (!selectedUnit.value) return false
     return canFoundCity(selectedUnit.value, state.value)
+  })
+
+  const validSpawnLocations = computed(() => {
+    if (!isPlayerTurn.value || !humanPlayer.value) return []
+    return getValidSpawnLocations(humanPlayer.value.id, state.value)
+  })
+
+  const canPurchaseUnits = computed(() => {
+    return isPlayerTurn.value && 
+           state.value.turnPhase === 'actions' && 
+           validSpawnLocations.value.length > 0
   })
 
   // Watch for AI turns
@@ -144,6 +156,11 @@ export function useGame() {
     skipTilePlacement(state.value)
   }
 
+  function handlePurchaseUnit(unitType: UnitType, location: HexCoord) {
+    if (!isPlayerTurn.value || isProcessing.value || !humanPlayer.value) return
+    purchaseUnit(humanPlayer.value.id, unitType, location, state.value)
+  }
+
   function startGame(playerSetup: PlayerSetup[]) {
     state.value = createGameState(playerSetup)
     selectedUnit.value = null
@@ -168,10 +185,13 @@ export function useGame() {
     canPlaceTile,
     selectedUnitMoves,
     canSelectedUnitFoundCity,
+    validSpawnLocations,
+    canPurchaseUnits,
     handleHexClick,
     handleFoundCity,
     handleEndTurn,
     handleSkipPlacement,
+    handlePurchaseUnit,
     startGame,
     newGame
   }

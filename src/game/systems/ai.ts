@@ -11,9 +11,10 @@ import {
   distanceToNearestCity
 } from './actions'
 import { getRules } from '../rules/gameRules'
+import { purchaseUnit, getValidSpawnLocations, canAffordUnit } from './purchase'
 
 // Delay between AI actions for visibility
-const AI_ACTION_DELAY = 500
+const AI_ACTION_DELAY = 200
 
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -29,6 +30,24 @@ function pickRandom<T>(arr: T[]): T | undefined {
 function getDistanceFromCities(coord: HexCoord, state: GameState): number {
   if (state.cities.length === 0) return Infinity
   return Math.min(...state.cities.map(c => hexDistance(coord, c.position)))
+}
+
+// AI purchases soldiers when it has money
+async function tryPurchaseSoldiers(playerId: string, state: GameState): Promise<void> {
+  // Keep buying soldiers while we can afford them
+  while (canAffordUnit(playerId, 'soldier', state)) {
+    const spawnLocations = getValidSpawnLocations(playerId, state)
+    if (spawnLocations.length === 0) break
+
+    // Pick a random spawn location
+    const location = pickRandom(spawnLocations)
+    if (!location) break
+
+    const purchased = purchaseUnit(playerId, 'soldier', location, state)
+    if (!purchased) break
+
+    await delay(AI_ACTION_DELAY)
+  }
 }
 
 // Execute AI turn
@@ -78,6 +97,9 @@ export async function executeAITurn(state: GameState): Promise<void> {
       }
     }
   }
+
+  // Phase 3: Purchase units - AIs only buy soldiers for now
+  await tryPurchaseSoldiers(player.id, state)
 
   // End turn
   endTurn(state)
