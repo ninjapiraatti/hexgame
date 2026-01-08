@@ -10,16 +10,28 @@ export interface CityRules {
   maxCitiesPerPlayer: number
 }
 
+export interface EconomyRules {
+  // Base gold produced by each city per turn
+  cityGoldPerTurn: number
+  // Starting gold for new players
+  startingGold: number
+}
+
 export interface GameRules {
   city: CityRules
+  economy: EconomyRules
 }
 
 // Default rules
 export const DEFAULT_RULES: GameRules = {
   city: {
     minLandNeighbors: 3,
-    minDistanceFromCity: 2,
+    minDistanceFromCity: 6,
     maxCitiesPerPlayer: 1
+  },
+  economy: {
+    cityGoldPerTurn: 100,
+    startingGold: 0
   }
 }
 
@@ -37,6 +49,10 @@ export function setRules(rules: Partial<GameRules>): void {
     city: {
       ...activeRules.city,
       ...rules.city
+    },
+    economy: {
+      ...activeRules.economy,
+      ...rules.economy
     }
   }
 }

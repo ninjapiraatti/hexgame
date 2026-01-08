@@ -1,5 +1,6 @@
 import type { GameState, Player } from '../types'
 import { resetUnitMovement } from './actions'
+import { processPlayerIncome } from './economy'
 
 // Get the current player
 export function getCurrentPlayer(state: GameState): Player {
@@ -9,6 +10,18 @@ export function getCurrentPlayer(state: GameState): Player {
 // Check if current player is AI
 export function isCurrentPlayerAI(state: GameState): boolean {
   return getCurrentPlayer(state).isAI
+}
+
+// Start a player's turn (called when turn begins)
+function startTurn(state: GameState): void {
+  const player = getCurrentPlayer(state)
+
+  // Process income at start of turn
+  processPlayerIncome(player.id, state)
+
+  // Reset turn phase and unit movement
+  state.turnPhase = 'placeTile'
+  resetUnitMovement(player.id, state)
 }
 
 // Advance to next player's turn
@@ -21,9 +34,8 @@ export function endTurn(state: GameState): void {
     state.turnNumber++
   }
 
-  // Reset turn phase and unit movement for new player
-  state.turnPhase = 'placeTile'
-  resetUnitMovement(getCurrentPlayer(state).id, state)
+  // Start the new player's turn
+  startTurn(state)
 }
 
 // Skip tile placement phase and go to actions

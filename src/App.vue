@@ -129,9 +129,13 @@ const playerColorMap = computed(() => {
             class="player-color"
             :style="{ backgroundColor: getPlayerColor(index) }"
           ></span>
-          <span class="player-name">{{ player.name }}</span>
-          <span v-if="player.isAI" class="ai-tag">AI</span>
-          <span class="player-score">{{ player.score }} pts</span>
+          <div class="player-info">
+            <span class="player-name">
+              {{ player.name }}
+              <span v-if="player.isAI" class="ai-tag">AI</span>
+            </span>
+            <span class="player-gold">{{ player.gold }} gold</span>
+          </div>
         </li>
       </ul>
 
@@ -328,22 +332,33 @@ footer {
   flex-shrink: 0;
 }
 
-.player-name {
+.player-info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.player-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .ai-tag {
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   background: #444;
   padding: 0.05rem 0.2rem;
   border-radius: 2px;
+  flex-shrink: 0;
 }
 
-.player-score {
-  color: #888;
+.player-gold {
+  color: #f0c040;
   font-size: 0.65rem;
 }
 
