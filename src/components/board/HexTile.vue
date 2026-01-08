@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { Tile, Unit, City } from '@/game/types'
 
-defineProps<{
+const props = defineProps<{
   tile: Tile
   size: number
   units?: Unit[]
   city?: City
   isSelected?: boolean
   isValidMove?: boolean
-  isExplorable?: boolean
+  playerColorMap?: Record<string, string>
 }>()
 
 const emit = defineEmits<{
@@ -29,19 +29,12 @@ const terrainColors: Record<string, string> = {
   water: '#4169E1'
 }
 
-const playerColors: Record<string, string> = {
-  p0: '#FF6B6B',
-  ai0: '#4ECDC4',
-  ai1: '#FFE66D',
-  ai2: '#95E1D3'
-}
-
 function getUnitColor(unit: Unit): string {
-  return playerColors[unit.owner] || '#FFFFFF'
+  return props.playerColorMap?.[unit.owner] || '#FFFFFF'
 }
 
 function getCityColor(city: City): string {
-  return playerColors[city.owner] || '#FFFFFF'
+  return props.playerColorMap?.[city.owner] || '#FFFFFF'
 }
 </script>
 

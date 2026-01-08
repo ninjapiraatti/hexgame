@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import GameBoard from "./components/board/GameBoard.vue";
+import GameSetup from "./components/ui/GameSetup.vue";
 import { useGame } from "./composables/useGame";
+import type { PlayerSetup } from "./game/state/gameState";
 
 const {
   state,
@@ -16,25 +19,55 @@ const {
   handleFoundCity,
   handleEndTurn,
   handleSkipPlacement,
+  startGame,
   newGame,
 } = useGame();
 
-const playerColors: Record<string, string> = {
-  p0: "#FF6B6B",
-  ai0: "#4ECDC4",
-  ai1: "#FFE66D",
-  ai2: "#95E1D3",
-};
+const isSetup = computed(() => state.value.phase === "setup");
+
+function handleStartGame(players: PlayerSetup[]) {
+  startGame(players);
+}
+
+// Generate colors for up to 6 players
+const playerColors = [
+  "#FF6B6B", // red
+  "#4ECDC4", // teal
+  "#FFE66D", // yellow
+  "#95E1D3", // mint
+  "#DDA0DD", // plum
+  "#87CEEB", // sky blue
+];
+
+function getPlayerColor(index: number): string {
+  return playerColors[index % playerColors.length];
+}
+
+// Create a map of player ID to color for the board
+const playerColorMap = computed(() => {
+  const map: Record<string, string> = {};
+  state.value.players.forEach((player, index) => {
+    map[player.id] = getPlayerColor(index);
+  });
+  return map;
+});
 </script>
 
 <template>
-  <div class="app">
+  <!-- Setup Screen -->
+  <GameSetup v-if="isSetup" @start="handleStartGame" />
+
+  <!-- Game Screen -->
+  <div v-else class="app">
     <header>
       <h1>HexGame</h1>
-      <div class="turn-info">
+      <div class="turn-info" v-if="currentPlayer">
         <span>Turn {{ state.turnNumber }}</span>
         <span class="divider">|</span>
-        <span class="current-player" :style="{ color: playerColors[currentPlayer.id] }">
+        <span
+          class="current-player"
+          :style="{ color: getPlayerColor(state.currentPlayerIndex) }"
+        >
           {{ currentPlayer.name }}
         </span>
         <span v-if="currentPlayer.isAI" class="ai-badge">AI</span>
@@ -51,17 +84,28 @@ const playerColors: Record<string, string> = {
         :selected-unit="selectedUnit"
         :valid-moves="selectedUnitMoves"
         :can-place-tile="canPlaceTile && isPlayerTurn"
-        :hex-size="50"
-        @hex-click="handleHexClick" />
+        :player-color-map="playerColorMap"
+        @hex-click="handleHexClick"
+      />
     </main>
 
     <footer>
       <div class="controls" v-if="isPlayerTurn && !isProcessing">
-        <button v-if="state.turnPhase === 'placeTile'" @click="handleSkipPlacement" class="btn">
+        <button
+          v-if="state.turnPhase === 'placeTile'"
+          @click="handleSkipPlacement"
+          class="btn"
+        >
           Skip Tile Placement
         </button>
 
-        <button v-if="canSelectedUnitFoundCity" @click="handleFoundCity" class="btn btn-primary">Found City</button>
+        <button
+          v-if="canSelectedUnitFoundCity"
+          @click="handleFoundCity"
+          class="btn btn-primary"
+        >
+          Found City
+        </button>
 
         <button @click="handleEndTurn" class="btn">End Turn</button>
       </div>
@@ -79,8 +123,12 @@ const playerColors: Record<string, string> = {
         <li
           v-for="(player, index) in state.players"
           :key="player.id"
-          :class="{ active: index === state.currentPlayerIndex }">
-          <span class="player-color" :style="{ backgroundColor: playerColors[player.id] }"></span>
+          :class="{ active: index === state.currentPlayerIndex }"
+        >
+          <span
+            class="player-color"
+            :style="{ backgroundColor: getPlayerColor(index) }"
+          ></span>
           <span class="player-name">{{ player.name }}</span>
           <span v-if="player.isAI" class="ai-tag">AI</span>
           <span class="player-score">{{ player.score }} pts</span>
@@ -90,7 +138,14 @@ const playerColors: Record<string, string> = {
       <h3>Cities</h3>
       <ul v-if="state.cities.length > 0" class="city-list">
         <li v-for="city in state.cities" :key="city.id">
-          <span class="player-color" :style="{ backgroundColor: playerColors[city.owner] }"></span>
+          <span
+            class="player-color"
+            :style="{
+              backgroundColor: getPlayerColor(
+                state.players.findIndex((p) => p.id === city.owner)
+              ),
+            }"
+          ></span>
           {{ city.name }}
         </li>
       </ul>
@@ -100,7 +155,9 @@ const playerColors: Record<string, string> = {
         <h3>Selected Unit</h3>
         <p>Type: {{ selectedUnit.type }}</p>
         <p>Moved: {{ selectedUnit.hasMoved ? "Yes" : "No" }}</p>
-        <p v-if="canSelectedUnitFoundCity" class="can-found">Can found city here!</p>
+        <p v-if="canSelectedUnitFoundCity" class="can-found">
+          Can found city here!
+        </p>
       </div>
     </aside>
   </div>

@@ -2,6 +2,13 @@ import { reactive } from 'vue'
 import type { GameState, Player, Tile, Unit, TerrainType, HexCoord } from '../types'
 import { coordToKey } from '../utils/hex'
 
+// Player setup input (from setup screen)
+export interface PlayerSetup {
+  id: string
+  name: string
+  isAI: boolean
+}
+
 // Create initial player
 function createPlayer(id: string, name: string, isAI: boolean = false): Player {
   return {
@@ -43,17 +50,19 @@ export function getRandomTerrain(): TerrainType {
   return 'water'
 }
 
-// Create initial game state - defaults to 1 human + 3 AI
-export function createGameState(
-  playerNames: string[] = ['Player'],
-  aiCount: number = 3
-): GameState {
-  const players: Player[] = [
-    ...playerNames.map((name, i) => createPlayer(`p${i}`, name, false)),
-    ...Array.from({ length: aiCount }, (_, i) =>
-      createPlayer(`ai${i}`, `AI ${i + 1}`, true)
-    )
+// Create initial game state from player setup
+export function createGameState(playerSetup?: PlayerSetup[]): GameState {
+  // Default setup if none provided
+  const setup = playerSetup ?? [
+    { id: 'p0', name: 'Player', isAI: false },
+    { id: 'ai0', name: 'AI 1', isAI: true },
+    { id: 'ai1', name: 'AI 2', isAI: true },
+    { id: 'ai2', name: 'AI 3', isAI: true }
   ]
+
+  const players: Player[] = setup.map((p, i) =>
+    createPlayer(p.isAI ? `ai${i}` : `p${i}`, p.name, p.isAI)
+  )
 
   // Start with a single forest tile at origin
   const startTile = createTile(0, 0, 'forest')

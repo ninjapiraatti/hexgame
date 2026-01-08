@@ -1,6 +1,6 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import type { GameState, HexCoord, Unit } from '@/game/types'
-import { createGameState } from '@/game/state/gameState'
+import { createGameState, type PlayerSetup } from '@/game/state/gameState'
 import { getCurrentPlayer, endTurn, onTilePlaced, skipTilePlacement } from '@/game/systems/turnManager'
 import {
   getExplorableHexes,
@@ -12,13 +12,30 @@ import {
 } from '@/game/systems/actions'
 import { checkAndRunAI } from '@/game/systems/ai'
 
+// Create a minimal state for the setup phase
+function createSetupState(): GameState {
+  return {
+    phase: 'setup',
+    turnPhase: 'placeTile',
+    currentPlayerIndex: 0,
+    players: [],
+    tiles: new Map(),
+    units: [],
+    cities: [],
+    turnNumber: 0
+  }
+}
+
 export function useGame() {
-  const state = ref<GameState>(createGameState())
+  const state = ref<GameState>(createSetupState())
   const selectedUnit = ref<Unit | null>(null)
   const isProcessing = ref(false)
 
-  const currentPlayer = computed(() => getCurrentPlayer(state.value))
-  const isPlayerTurn = computed(() => !currentPlayer.value.isAI)
+  const currentPlayer = computed(() => {
+    if (state.value.players.length === 0) return null
+    return getCurrentPlayer(state.value)
+  })
+  const isPlayerTurn = computed(() => currentPlayer.value ? !currentPlayer.value.isAI : false)
 
   // Only show explorable hexes for human player during their turn
   const humanPlayer = computed(() => state.value.players.find(p => !p.isAI))
@@ -127,11 +144,18 @@ export function useGame() {
     skipTilePlacement(state.value)
   }
 
-  function newGame() {
-    state.value = createGameState()
+  function startGame(playerSetup: PlayerSetup[]) {
+    state.value = createGameState(playerSetup)
     selectedUnit.value = null
     isProcessing.value = false
     runAIIfNeeded()
+  }
+
+  function newGame() {
+    // Reset to setup phase
+    state.value = createSetupState()
+    selectedUnit.value = null
+    isProcessing.value = false
   }
 
   return {
@@ -148,6 +172,7 @@ export function useGame() {
     handleFoundCity,
     handleEndTurn,
     handleSkipPlacement,
+    startGame,
     newGame
   }
 }

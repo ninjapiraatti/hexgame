@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import type { Tile, Unit, City, HexCoord } from '@/game/types'
 import { axialToPixel } from '@/game/utils/hex'
 import HexTile from './HexTile.vue'
@@ -12,15 +12,40 @@ const props = defineProps<{
   explorableHexes: HexCoord[]
   selectedUnit: Unit | null
   validMoves: HexCoord[]
-  hexSize?: number
   canPlaceTile: boolean
+  playerColorMap: Record<string, string>
 }>()
 
 const emit = defineEmits<{
   hexClick: [coord: HexCoord]
 }>()
 
-const hexSize = computed(() => props.hexSize ?? 40)
+// Zoom state
+const MIN_ZOOM = 0.5
+const MAX_ZOOM = 2
+const ZOOM_STEP = 0.1
+const zoom = ref(1)
+const baseHexSize = 40
+
+const hexSize = computed(() => baseHexSize * zoom.value)
+
+function handleWheel(e: WheelEvent) {
+  e.preventDefault()
+  const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP
+  zoom.value = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom.value + delta))
+}
+
+function zoomIn() {
+  zoom.value = Math.min(MAX_ZOOM, zoom.value + ZOOM_STEP)
+}
+
+function zoomOut() {
+  zoom.value = Math.max(MIN_ZOOM, zoom.value - ZOOM_STEP)
+}
+
+function resetZoom() {
+  zoom.value = 1
+}
 
 function getTilePosition(coord: HexCoord) {
   const { x, y } = axialToPixel(coord, hexSize.value)
@@ -55,9 +80,14 @@ function isValidMove(coord: HexCoord): boolean {
 </script>
 
 <template>
-  <div class="game-board">
+  <div class="game-board" @wheel="handleWheel">
+    <div class="zoom-controls">
+      <button @click="zoomIn" title="Zoom in">+</button>
+      <button @click="resetZoom" title="Reset zoom">{{ Math.round(zoom * 100) }}%</button>
+      <button @click="zoomOut" title="Zoom out">-</button>
+    </div>
+
     <div class="board-container">
-      <!-- Existing tiles -->
       <HexTile
         v-for="[key, tile] in tiles"
         :key="key"
@@ -67,11 +97,11 @@ function isValidMove(coord: HexCoord): boolean {
         :city="getCityOnTile(tile.coord)"
         :is-selected="isSelected(tile.coord)"
         :is-valid-move="isValidMove(tile.coord)"
+        :player-color-map="playerColorMap"
         :style="getTilePosition(tile.coord)"
         @click="emit('hexClick', tile.coord)"
       />
 
-      <!-- Unexplored hexes that can be clicked to place tiles -->
       <UnexploredHex
         v-for="coord in explorableHexes"
         :key="`unexplored-${coord.q}-${coord.r}`"
@@ -100,5 +130,42 @@ function isValidMove(coord: HexCoord): boolean {
   position: absolute;
   top: 50%;
   left: 50%;
+}
+
+.zoom-controls {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 2px;
+  z-index: 10;
+}
+
+.zoom-controls button {
+  width: 32px;
+  height: 28px;
+  border: none;
+  background: #333;
+  color: #eee;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.15s;
+}
+
+.zoom-controls button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.zoom-controls button:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.zoom-controls button:hover {
+  background: #444;
+}
+
+.zoom-controls button:nth-child(2) {
+  width: 50px;
+  font-size: 0.7rem;
 }
 </style>
