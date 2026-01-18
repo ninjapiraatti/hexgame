@@ -29,13 +29,20 @@ export interface PurchaseRules {
 }
 
 export interface CombatRules {
-  // Turns a soldier must stay adjacent to city to capture it
+  // Turns a unit must stay adjacent to city to capture it
   siegeTurnsToCapture: number
 }
 
+export interface HeroRules {
+  // Maximum hexes a hero can move per turn
+  movementRange: number
+  // Maximum tiles a hero can reveal per turn
+  maxRevealsPerTurn: number
+}
+
 export interface AIRules {
-  // Minimum number of soldiers before moving toward enemy cities
-  minSoldiersForAttack: number
+  // Minimum number of heroes before moving toward enemy cities
+  minHeroesForAttack: number
 }
 
 export interface GameRules {
@@ -43,6 +50,7 @@ export interface GameRules {
   economy: EconomyRules
   purchase: PurchaseRules
   combat: CombatRules
+  hero: HeroRules
   ai: AIRules
 }
 
@@ -60,14 +68,18 @@ export const DEFAULT_RULES: GameRules = {
   purchase: {
     unitCosts: {
       settler: { gold: 500 },
-      soldier: { gold: 300 }
+      hero: { gold: 2500 }
     }
   },
   combat: {
     siegeTurnsToCapture: 5
   },
+  hero: {
+    movementRange: 2,
+    maxRevealsPerTurn: 2
+  },
   ai: {
-    minSoldiersForAttack: 2
+    minHeroesForAttack: 2
   }
 }
 
@@ -89,6 +101,10 @@ export function setRules(rules: Partial<GameRules>): void {
     economy: {
       ...activeRules.economy,
       ...rules.economy
+    },
+    hero: {
+      ...activeRules.hero,
+      ...rules.hero
     },
     ai: {
       ...activeRules.ai,

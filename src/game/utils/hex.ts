@@ -52,3 +52,15 @@ export function axialToPixel(coord: HexCoord, size: number): { x: number; y: num
   const y = size * ((3 / 2) * coord.r)
   return { x, y }
 }
+
+// Get all hexes within a given range from a center coordinate
+export function getHexesInRange(center: HexCoord, range: number): HexCoord[] {
+  const results: HexCoord[] = []
+  for (let q = -range; q <= range; q++) {
+    for (let r = Math.max(-range, -q - range); r <= Math.min(range, -q + range); r++) {
+      if (q === 0 && r === 0) continue // Skip the center
+      results.push({ q: center.q + q, r: center.r + r })
+    }
+  }
+  return results
+}

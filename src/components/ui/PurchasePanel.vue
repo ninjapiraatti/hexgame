@@ -14,10 +14,10 @@ const emit = defineEmits<{
 }>();
 
 const settlerCost = getUnitCost("settler");
-const soldierCost = getUnitCost("soldier");
+const heroCost = getUnitCost("hero");
 
 const canAffordSettler = computed(() => props.playerGold >= settlerCost);
-const canAffordSoldier = computed(() => props.playerGold >= soldierCost);
+const canAffordHero = computed(() => props.playerGold >= heroCost);
 
 const selectedUnitType = ref<UnitType | null>(null);
 const selectedLocation = ref<HexCoord | null>(null);
@@ -75,11 +75,11 @@ function isLocationSelected(coord: HexCoord): boolean {
 
       <button
         class="unit-btn"
-        :class="{ disabled: !canAffordSoldier || validSpawnLocations.length === 0 }"
-        :disabled="!canAffordSoldier || validSpawnLocations.length === 0"
-        @click="startPurchase('soldier')">
-        <div class="unit-name">Soldier</div>
-        <div class="unit-cost" :class="{ unaffordable: !canAffordSoldier }">{{ soldierCost }} gold</div>
+        :class="{ disabled: !canAffordHero || validSpawnLocations.length === 0 }"
+        :disabled="!canAffordHero || validSpawnLocations.length === 0"
+        @click="startPurchase('hero')">
+        <div class="unit-name">Hero</div>
+        <div class="unit-cost" :class="{ unaffordable: !canAffordHero }">{{ heroCost }} gold</div>
       </button>
     </div>
 

@@ -35,8 +35,8 @@ _Tile distribution ratios TBD. More terrain types may be added._
 
 ### Units
 
-- **Settler**: Can found a city (consumed in the process)
-- _More unit types to be added_
+- **Settler**: Can found a city (consumed in the process). When a city is founded, a free Hero spawns at the city location.
+- **Hero**: Powerful exploration unit. Can move up to 2 hexes per turn and reveal up to 2 adjacent unexplored hexes per turn. Cost: 2500 gold.
 
 Each player can have **one city maximum** (for now).
 

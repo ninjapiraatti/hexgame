@@ -16,6 +16,8 @@ const {
   canPlaceTile,
   selectedUnitMoves,
   canSelectedUnitFoundCity,
+  selectedHeroRevealableHexes,
+  selectedHeroRemainingReveals,
   validSpawnLocations,
   canPurchaseUnits,
   handleHexClick,
@@ -26,6 +28,24 @@ const {
   startGame,
   newGame,
 } = useGame();
+
+// Combine explorable hexes with hero revealable hexes (for display purposes)
+const allExplorableHexes = computed(() => {
+  // During tile placement phase, show normal explorable hexes
+  if (state.value.turnPhase === 'placeTile') {
+    return explorableHexes.value
+  }
+  // During action phase, show hero-revealable hexes if a hero is selected
+  return selectedHeroRevealableHexes.value
+})
+
+// Determine if any explorable hex is clickable
+const canExplore = computed(() => {
+  if (state.value.turnPhase === 'placeTile') {
+    return canPlaceTile.value && isPlayerTurn.value
+  }
+  return selectedHeroRevealableHexes.value.length > 0 && isPlayerTurn.value
+})
 
 const isSetup = computed(() => state.value.phase === "setup");
 
@@ -81,10 +101,10 @@ const playerColorMap = computed(() => {
         :tiles="state.tiles"
         :units="state.units"
         :cities="state.cities"
-        :explorable-hexes="explorableHexes"
+        :explorable-hexes="allExplorableHexes"
         :selected-unit="selectedUnit"
         :valid-moves="selectedUnitMoves"
-        :can-place-tile="canPlaceTile && isPlayerTurn"
+        :can-place-tile="canExplore"
         :player-color-map="playerColorMap"
         @hex-click="handleHexClick" />
     </main>
@@ -142,6 +162,7 @@ const playerColorMap = computed(() => {
         <h3>Selected Unit</h3>
         <p>Type: {{ selectedUnit.type }}</p>
         <p>Moved: {{ selectedUnit.hasMoved ? "Yes" : "No" }}</p>
+        <p v-if="selectedUnit.type === 'hero'">Reveals left: {{ selectedHeroRemainingReveals }}</p>
         <p v-if="canSelectedUnitFoundCity" class="can-found">Can found city here!</p>
       </div>
 

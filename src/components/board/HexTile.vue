@@ -59,10 +59,10 @@ function getCityColor(city: City): string {
         v-for="unit in units"
         :key="unit.id"
         class="unit"
-        :class="{ 'unit-soldier': unit.type === 'soldier' }"
+        :class="{ 'unit-hero': unit.type === 'hero' }"
         :style="{ backgroundColor: getUnitColor(unit) }"
         :title="unit.type">
-        {{ unit.type === "settler" ? "👤" : "⚔️" }}
+        {{ unit.type === "settler" ? "👤" : "🦸" }}
       </div>
     </div>
   </div>
@@ -134,8 +134,8 @@ function getCityColor(city: City): string {
   border: 1px solid rgba(0, 0, 0, 0.3);
 }
 
-.unit-soldier {
-  border: 2px solid rgba(0, 0, 0, 0.8);
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+.unit-hero {
+  border: 2px solid rgba(255, 215, 0, 0.8);
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
 }
 </style>

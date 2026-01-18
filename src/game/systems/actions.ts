@@ -1,6 +1,6 @@
 import type { GameState, Unit, City, HexCoord, Tile } from '../types'
-import { coordToKey, getNeighbors, coordsEqual, hexDistance } from '../utils/hex'
-import { createTile, getRandomTerrain } from '../state/gameState'
+import { coordToKey, getNeighbors, coordsEqual, hexDistance, getHexesInRange } from '../utils/hex'
+import { createTile, getRandomTerrain, createUnit } from '../state/gameState'
 import { getRules } from '../rules/gameRules'
 
 // Check if a terrain type is land (not water)
@@ -83,6 +83,11 @@ export function foundCity(unit: Unit, state: GameState): City | null {
     state.units.splice(unitIndex, 1)
   }
 
+  // Spawn a free hero at the city location
+  const hero = createUnit('hero', unit.owner, city.position)
+  hero.hasMoved = true // Cannot move on the turn it's spawned
+  state.units.push(hero)
+
   return city
 }
 
@@ -115,12 +120,22 @@ export function placeTile(coord: HexCoord, state: GameState): Tile | null {
   return tile
 }
 
+// Get the movement range for a unit type
+export function getMovementRange(unit: Unit): number {
+  if (unit.type === 'hero') {
+    return getRules().hero.movementRange
+  }
+  return 1 // Settlers move 1 hex
+}
+
 // Get valid movement destinations for a unit
 export function getValidMoves(unit: Unit, state: GameState): HexCoord[] {
   if (unit.hasMoved) return []
 
-  const neighbors = getNeighbors(unit.position)
-  return neighbors.filter(coord => {
+  const range = getMovementRange(unit)
+  const candidates = range === 1 ? getNeighbors(unit.position) : getHexesInRange(unit.position, range)
+
+  return candidates.filter(coord => {
     const tile = state.tiles.get(coordToKey(coord))
     // Can only move to explored land tiles
     return tile && isLand(tile.type)
@@ -139,11 +154,52 @@ export function moveUnit(unit: Unit, destination: HexCoord, state: GameState): b
   return true
 }
 
-// Reset all units' movement at start of turn
+// Reset all units' movement and reveals at start of turn
 export function resetUnitMovement(playerId: string, state: GameState): void {
   for (const unit of state.units) {
     if (unit.owner === playerId) {
       unit.hasMoved = false
+      unit.tilesRevealed = 0
     }
   }
+}
+
+// Get how many more tiles a hero can reveal this turn
+export function getRemainingReveals(unit: Unit): number {
+  if (unit.type !== 'hero') return 0
+  return Math.max(0, getRules().hero.maxRevealsPerTurn - unit.tilesRevealed)
+}
+
+// Get unexplored hexes adjacent to a specific unit
+export function getUnitExplorableHexes(unit: Unit, state: GameState): HexCoord[] {
+  const explorable: HexCoord[] = []
+  for (const neighbor of getNeighbors(unit.position)) {
+    const key = coordToKey(neighbor)
+    if (!state.tiles.has(key)) {
+      explorable.push(neighbor)
+    }
+  }
+  return explorable
+}
+
+// Reveal a tile with a hero (uses one of the hero's reveals)
+export function heroRevealTile(unit: Unit, coord: HexCoord, state: GameState): Tile | null {
+  if (unit.type !== 'hero') return null
+  if (getRemainingReveals(unit) <= 0) return null
+
+  // Check if the hex is adjacent to the hero
+  const neighbors = getNeighbors(unit.position)
+  const isAdjacent = neighbors.some(n => coordsEqual(n, coord))
+  if (!isAdjacent) return null
+
+  // Check if it's unexplored
+  const key = coordToKey(coord)
+  if (state.tiles.has(key)) return null
+
+  // Place the tile
+  const tile = placeTile(coord, state)
+  if (tile) {
+    unit.tilesRevealed++
+  }
+  return tile
 }

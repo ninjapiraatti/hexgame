@@ -11,7 +11,7 @@ export type TerrainType = 'forest' | 'desert' | 'mountain' | 'water'
 export type ResourceType = 'gold' | 'wood' | 'stone' | 'fish'
 
 // Unit types
-export type UnitType = 'settler' | 'soldier'
+export type UnitType = 'settler' | 'hero'
 
 // Player identification
 export type PlayerId = string
@@ -30,6 +30,7 @@ export interface Unit {
   owner: PlayerId
   position: HexCoord
   hasMoved: boolean
+  tilesRevealed: number // How many tiles the unit has revealed this turn (for heroes)
 }
 
 // Siege tracking - which player is sieging and for how many turns

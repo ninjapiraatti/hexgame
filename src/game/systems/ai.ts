@@ -1,5 +1,5 @@
-import type { GameState, HexCoord, Unit, City } from '../types'
-import { hexDistance, coordsEqual } from '../utils/hex'
+import type { GameState, HexCoord, Unit } from '../types'
+import { hexDistance, getNeighbors } from '../utils/hex'
 import { getCurrentPlayer, endTurn, onTilePlaced } from './turnManager'
 import {
   getExplorableHexes,
@@ -8,7 +8,10 @@ import {
   moveUnit,
   canFoundCity,
   foundCity,
-  distanceToNearestCity
+  distanceToNearestCity,
+  getUnitExplorableHexes,
+  heroRevealTile,
+  getRemainingReveals
 } from './actions'
 import { getRules } from '../rules/gameRules'
 import { purchaseUnit, getValidSpawnLocations, canAffordUnit } from './purchase'
@@ -32,104 +35,10 @@ function getDistanceFromCities(coord: HexCoord, state: GameState): number {
   return Math.min(...state.cities.map(c => hexDistance(coord, c.position)))
 }
 
-// Find the nearest enemy city to a position
-function findNearestEnemyCity(
-  position: HexCoord,
-  playerId: string,
-  state: GameState
-): City | null {
-  const enemyCities = state.cities.filter(c => c.owner !== playerId)
-  if (enemyCities.length === 0) return null
-
-  let nearest: City | null = null
-  let minDistance = Infinity
-
-  for (const city of enemyCities) {
-    const dist = hexDistance(position, city.position)
-    if (dist < minDistance) {
-      minDistance = dist
-      nearest = city
-    }
-  }
-
-  return nearest
-}
-
-// Find a grouping point for soldiers (average position of all player's soldiers)
-function findSoldierGroupingPoint(playerId: string, state: GameState): HexCoord | null {
-  const soldiers = state.units.filter(u => u.owner === playerId && u.type === 'soldier')
-  if (soldiers.length === 0) return null
-
-  // Calculate average position
-  const avgQ = soldiers.reduce((sum, s) => sum + s.position.q, 0) / soldiers.length
-  const avgR = soldiers.reduce((sum, s) => sum + s.position.r, 0) / soldiers.length
-
-  // Find the closest soldier to the average position
-  let closest = soldiers[0]
-  let minDist = Infinity
-
-  for (const soldier of soldiers) {
-    const dist = Math.sqrt(
-      Math.pow(soldier.position.q - avgQ, 2) + Math.pow(soldier.position.r - avgR, 2)
-    )
-    if (dist < minDist) {
-      minDist = dist
-      closest = soldier
-    }
-  }
-
-  return closest.position
-}
-
-// Check if soldiers are grouped together (within distance 2 of each other)
-function areSoldiersGrouped(playerId: string, state: GameState): boolean {
-  const soldiers = state.units.filter(u => u.owner === playerId && u.type === 'soldier')
-  const minSoldiers = getRules().ai.minSoldiersForAttack
-
-  if (soldiers.length < minSoldiers) return false
-
-  // Check if at least minSoldiersForAttack are within range of each other
-  for (let i = 0; i < soldiers.length; i++) {
-    let nearbyCount = 1 // Count the soldier itself
-    for (let j = 0; j < soldiers.length; j++) {
-      if (i !== j && hexDistance(soldiers[i].position, soldiers[j].position) <= 2) {
-        nearbyCount++
-      }
-    }
-    if (nearbyCount >= minSoldiers) return true
-  }
-
-  return false
-}
-
-// Move soldier toward a target position
-function moveSoldierTowardTarget(
-  soldier: Unit,
-  target: HexCoord,
-  state: GameState
-): HexCoord | undefined {
-  const validMoves = getValidMoves(soldier, state)
-  if (validMoves.length === 0) return undefined
-
-  // Pick the move that gets closest to the target
-  let bestMove = validMoves[0]
-  let bestDist = hexDistance(validMoves[0], target)
-
-  for (const move of validMoves) {
-    const dist = hexDistance(move, target)
-    if (dist < bestDist) {
-      bestDist = dist
-      bestMove = move
-    }
-  }
-
-  return bestMove
-}
-
-// AI purchases soldiers when it has money
-async function tryPurchaseSoldiers(playerId: string, state: GameState): Promise<void> {
-  // Keep buying soldiers while we can afford them
-  while (canAffordUnit(playerId, 'soldier', state)) {
+// AI purchases heroes when it has money
+async function tryPurchaseHeroes(playerId: string, state: GameState): Promise<void> {
+  // Keep buying heroes while we can afford them
+  while (canAffordUnit(playerId, 'hero', state)) {
     const spawnLocations = getValidSpawnLocations(playerId, state)
     if (spawnLocations.length === 0) break
 
@@ -137,7 +46,7 @@ async function tryPurchaseSoldiers(playerId: string, state: GameState): Promise<
     const location = pickRandom(spawnLocations)
     if (!location) break
 
-    const purchased = purchaseUnit(playerId, 'soldier', location, state)
+    const purchased = purchaseUnit(playerId, 'hero', location, state)
     if (!purchased) break
 
     await delay(AI_ACTION_DELAY)
@@ -154,10 +63,10 @@ export async function executeAITurn(state: GameState): Promise<void> {
   // Get player's units
   const playerUnits = state.units.filter(u => u.owner === player.id)
   const settlers = playerUnits.filter(u => u.type === 'settler')
-  const soldiers = playerUnits.filter(u => u.type === 'soldier')
+  const heroes = playerUnits.filter(u => u.type === 'hero')
   const hasCity = state.cities.some(c => c.owner === player.id)
 
-  // Phase 1: Try to place a tile - prefer tiles further from cities or near soldiers
+  // Phase 1: Try to place a tile - prefer tiles further from cities or near heroes
   const explorableHexes = getExplorableHexes(player.id, state)
   if (explorableHexes.length > 0) {
     const targetHex = pickBestTilePlacement(explorableHexes, playerUnits, state)
@@ -195,42 +104,35 @@ export async function executeAITurn(state: GameState): Promise<void> {
     }
   }
 
-  // Then handle soldiers with new strategy
-  const grouped = areSoldiersGrouped(player.id, state)
-  const nearestEnemyCity = findNearestEnemyCity(
-    soldiers[0]?.position || { q: 0, r: 0 },
-    player.id,
-    state
-  )
-
-  for (const soldier of soldiers) {
-    const validMoves = getValidMoves(soldier, state)
-    if (validMoves.length === 0) continue
-
-    let destination: HexCoord | undefined
-
-    if (grouped && nearestEnemyCity) {
-      // Soldiers are grouped - move toward enemy city
-      destination = moveSoldierTowardTarget(soldier, nearestEnemyCity.position, state)
-    } else {
-      // Not grouped yet - move toward grouping point
-      const groupingPoint = findSoldierGroupingPoint(player.id, state)
-      if (groupingPoint && !coordsEqual(soldier.position, groupingPoint)) {
-        destination = moveSoldierTowardTarget(soldier, groupingPoint, state)
-      } else {
-        // Already at grouping point or only soldier - wait
-        destination = undefined
+  // Then handle heroes - they explore and reveal tiles
+  for (const hero of heroes) {
+    // First, move toward unexplored areas
+    const validMoves = getValidMoves(hero, state)
+    if (validMoves.length > 0) {
+      const destination = pickBestMoveForHero(hero, validMoves, state)
+      if (destination) {
+        moveUnit(hero, destination, state)
+        await delay(AI_ACTION_DELAY)
       }
     }
 
-    if (destination) {
-      moveUnit(soldier, destination, state)
-      await delay(AI_ACTION_DELAY)
+    // Then use reveal abilities after moving (to reveal new areas)
+    while (getRemainingReveals(hero) > 0) {
+      const explorableFromHero = getUnitExplorableHexes(hero, state)
+      if (explorableFromHero.length === 0) break
+
+      const targetHex = pickRandom(explorableFromHero)
+      if (targetHex) {
+        heroRevealTile(hero, targetHex, state)
+        await delay(AI_ACTION_DELAY)
+      } else {
+        break
+      }
     }
   }
 
-  // Phase 3: Purchase units - AIs only buy soldiers for now
-  await tryPurchaseSoldiers(player.id, state)
+  // Phase 3: Purchase units - AIs only buy heroes for now
+  await tryPurchaseHeroes(player.id, state)
 
   // End turn
   endTurn(state)
@@ -320,6 +222,67 @@ function pickBestMoveForSettler(
 
   // Pick the best move (or randomly from top 2 for slight variety)
   const topCandidates = scored.slice(0, Math.min(2, scored.length))
+  return pickRandom(topCandidates.map(s => s.move))
+}
+
+// Count unexplored hexes adjacent to a position
+function countAdjacentUnexplored(coord: HexCoord, state: GameState): number {
+  const neighbors = getNeighbors(coord)
+  let count = 0
+  for (const neighbor of neighbors) {
+    const key = `${neighbor.q},${neighbor.r}`
+    if (!state.tiles.has(key)) {
+      count++
+    }
+  }
+  return count
+}
+
+// Pick the best exploration move for a hero
+function pickBestMoveForHero(
+  hero: Unit,
+  moves: HexCoord[],
+  state: GameState
+): HexCoord | undefined {
+  if (moves.length === 0) return undefined
+
+  // Score each move based on exploration potential
+  const scored = moves.map(move => {
+    // Primary: how many unexplored hexes are adjacent (more = better for reveals)
+    const unexploredNeighbors = countAdjacentUnexplored(move, state)
+
+    // Secondary: prefer moves further from the center (spread out exploration)
+    const distFromCenter = hexDistance(move, { q: 0, r: 0 })
+
+    // Tertiary: avoid moves that go back toward own city
+    const playerCities = state.cities.filter(c => c.owner === hero.owner)
+    let distFromOwnCity = Infinity
+    for (const city of playerCities) {
+      const dist = hexDistance(move, city.position)
+      if (dist < distFromOwnCity) distFromOwnCity = dist
+    }
+
+    // Calculate score: prioritize unexplored neighbors, then distance from center
+    let score = unexploredNeighbors * 10 + distFromCenter * 0.5
+
+    // Bonus for being at the exploration frontier
+    if (unexploredNeighbors > 0) {
+      score += 20
+    }
+
+    // Small penalty for staying too close to own city (encourage exploration)
+    if (distFromOwnCity < 3) {
+      score -= 5
+    }
+
+    return { move, score }
+  })
+
+  // Sort by score descending
+  scored.sort((a, b) => b.score - a.score)
+
+  // Pick from top 3 candidates for variety
+  const topCandidates = scored.slice(0, Math.min(3, scored.length))
   return pickRandom(topCandidates.map(s => s.move))
 }
 

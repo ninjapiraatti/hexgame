@@ -38,7 +38,8 @@ export function createUnit(type: Unit['type'], owner: string, position: HexCoord
     type,
     owner,
     position: { ...position },
-    hasMoved: false
+    hasMoved: false,
+    tilesRevealed: 0
   }
 }
 

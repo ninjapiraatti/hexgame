@@ -8,7 +8,10 @@ import {
   getValidMoves,
   moveUnit,
   canFoundCity,
-  foundCity
+  foundCity,
+  getUnitExplorableHexes,
+  heroRevealTile,
+  getRemainingReveals
 } from '@/game/systems/actions'
 import { checkAndRunAI } from '@/game/systems/ai'
 import { purchaseUnit, getValidSpawnLocations } from '@/game/systems/purchase'
@@ -61,6 +64,18 @@ export function useGame() {
     return canFoundCity(selectedUnit.value, state.value)
   })
 
+  // Hero reveal functionality
+  const selectedHeroRevealableHexes = computed(() => {
+    if (!selectedUnit.value || selectedUnit.value.type !== 'hero') return []
+    if (getRemainingReveals(selectedUnit.value) <= 0) return []
+    return getUnitExplorableHexes(selectedUnit.value, state.value)
+  })
+
+  const selectedHeroRemainingReveals = computed(() => {
+    if (!selectedUnit.value || selectedUnit.value.type !== 'hero') return 0
+    return getRemainingReveals(selectedUnit.value)
+  })
+
   const validSpawnLocations = computed(() => {
     if (!isPlayerTurn.value || !humanPlayer.value) return []
     return getValidSpawnLocations(humanPlayer.value.id, state.value)
@@ -109,6 +124,17 @@ export function useGame() {
       if (isExplorable) {
         placeTile(coord, state.value)
         onTilePlaced(state.value)
+        return
+      }
+    }
+
+    // If clicking unexplored hex during action phase with a hero selected, try to reveal
+    if (!existingTile && state.value.turnPhase === 'actions' && selectedUnit.value) {
+      const canReveal = selectedHeroRevealableHexes.value.some(
+        h => h.q === coord.q && h.r === coord.r
+      )
+      if (canReveal) {
+        heroRevealTile(selectedUnit.value, coord, state.value)
         return
       }
     }
@@ -185,6 +211,8 @@ export function useGame() {
     canPlaceTile,
     selectedUnitMoves,
     canSelectedUnitFoundCity,
+    selectedHeroRevealableHexes,
+    selectedHeroRemainingReveals,
     validSpawnLocations,
     canPurchaseUnits,
     handleHexClick,
